@@ -1,0 +1,427 @@
+---
+title: "LM in R"
+output: html_notebook
+---
+
+This is the first assignment.
+
+-----------------------------
+```{r}
+setwd('~/Downloads')
+library(data.table)
+library(DBI)
+library(RSQLite)
+library(tidyverse)
+con <- SQLite() %>% dbConnect('wooldridge.db')
+con %>% dbListTables
+```
+
+1.1
+Use the data in WAGE1.RAW for this exercise.
+(i) Find the average education level in the sample. What are the lowest and highest
+years of education?
+(ii) Find the average hourly wage in the sample. Does it seem high or low?
+(iii) The wage data are reported in 1976 dollars. Using the Economic Report of the
+President (2011 or later), obtain and report the Consumer Price Index (CPI) for
+the years 1976 and 2010.
+(iv) Use the CPI values from part (iii) to find the average hourly wage in 2010 dollars.
+Now does the average hourly wage seem reasonable?
+(v) How many women are in the sample? How many men?
+
+```{r}
+wage1 <- con %>% dbReadTable('wage1') %>% data.table
+summary(wage1)
+sum(wage1$female)
+str(wage1)
+
+218.056/56.9
+
+
+table(wage1$female)
+
+#Q1.1a:From the summary, the average education level in the sample is 12.56, the 
+#lowest and highest years of education are 0 and 18
+#Q1.1B:From the summary, the average hourly wage in the sample is 5.909. It is 
+#high compared to median which is 4.700
+#Q1.1C:218.056/56.9*100=383.2267
+#Q1.1D:383.2267-100=283.2267==28.32%==5.909*（1+283.2267%）=22.64
+#Q1.1E:female 252.male 526-252=274
+```
+
+The data in MEAP01.RAW are for the state of Michigan in the year 2001. Use these data to answer the following questions.
+(i) Find the largest and smallest values of math4. Does the range make sense?
+Explain.
+(ii) How many schools have a perfect pass rate on the math test? What percentage is
+this of the total sample?
+(iii) How many schools have math pass rates of exactly 50%?
+(iv) Compare the average pass rates for the math and reading scores. Which test is
+harder to pass?
+(v) Find the correlation between math4 and read4. What do you conclude?
+(vi) The variable exppp is expenditure per pupil. Find the average of exppp along
+with its standard deviation. Would you say there is wide variation in per pupil
+spending?
+(vii) Suppose School A spends $6,000 per student and School B spends $5,500 per
+student. By what percentage does School A’s spending exceed School B’s? Compare this to 
+100 * [log(6,000) – log(5,500)], which is the approximation percent age difference based on the difference in the natural logs. (See Section A.4 in Appendix A.)
+
+```{r}
+## Question 2 Solution
+meap01 <- con %>% dbReadTable('meap01') %>% data.table
+summary(meap01)
+
+sum(as.numeric(meap01$math4==100))
+mean(as.numeric(meap01$math4==100))
+
+meap01[meap01$math4==50]
+
+cor(meap01$math4,meap01$read4)
+
+sd(meap01$exppp)
+
+(6000-5500)/5500
+
+log(6000)-log(5500)
+(0.09090909-0.08701138)/0.08701138
+0.09090909-0.08701138
+38/1823
+#Q1.2a.min0 max 100 makes sense.
+#Q1.2b.sum is 38。mean is 2.08%
+#Q1.2c.sum is 17
+#Q1.2d.from summary, the math mean is 71.91%, the reading Mean is 60.0%. 
+#So reading exam is much harder.
+#Q1.2e.Correlationis 0.8427281. This is very high
+#Q1.2f.from summary, exppp Mean is 5195$, sd=1091.89  The variance is moderate
+#Q1.2g.(6000-5500)/5500=0.09090909    [log(6,000) – log(5,500)]=0.08701138  
+#      Real: 9.1% Log approx.: 8.4%.
+
+```
+
+The data in 401K.RAW are a subset of data analyzed by Papke (1995) to study the relationship between participation in a 401(k) pension plan and the generosity of the plan. The variable prate is the percentage of eligible workers with an active account; this is the variable we would like to explain. The measure of generosity is the plan match rate, mrate. This variable gives the average amount the firm contributes to each worker’s plan for each $1 contribution by the worker. For example, if mrate = 0.50, then a $1 contribution by the worker is matched by a 50¢ contribution by the firm.
+(i) Find the average participation rate and the average match rate in the sample of plans.
+(ii) Now, estimate the simple regression equation
+prate= bˆ0+1 bˆ1 mrate,
+and report the results along with the sample size and R-squared.
+(iii) Interpret the intercept in your equation. Interpret the coefficient on mrate.
+(iv) Find the predicted prate when mrate = 3.5. Is this a reasonable prediction?
+Explain what is happening here.
+(v) How much of the variation in prate is explained by mrate? Is this a lot in your
+opinion?
+```{r}
+## Question 3 Solution
+data3 <- con %>% dbReadTable('401K') %>% data.table
+str(data3)
+summary(data3)
+
+model1    <- lm(prate~mrate, data=data3)
+model1
+summary(model1)
+coef(model1)
+
+83.0755+5.8611*3.5
+
+data3[data3$mrate==3.5]
+#Q1.3a.the prate mean is 87.36 and the match rate mean is 0.7315
+#Q1.3b.prate=83.0755+5.8611*mrate    Multiple R-squared:  0.0747 n=1000
+#Q1.3c.when mrate is 0, the prate is 83.0755; the (approximate) predicted prate
+#increase 5.8611 in salary given one more mrate
+#Q1.3d.when mrate=3.5,the predicted prate is 103.5894. the real prate is 85.8.
+#The residual is high.Predprate103%whichisimpossible.The best fit line just doesn’t make sense this far #from the cen ter of the data.
+#Q1.3e.7.47% which is basically zero. Not a good fit. 
+```
+
+The data set in CEOSAL2.RAW contains information on chief executive officers for U.S. corporations. The variable salary is annual compensation, in thousands of dollars, and ceoten is prior number of years as company CEO.
+(i) Find the average salary and the average tenure in the sample.
+(ii) How many CEOs are in their first year as CEO (that is, ceoten = 0)? What is the longest tenure as a CEO?
+(iii) Estimate the simple regression model
+log(salary) = b0 + b1ceoten + u,
+and report your results in the usual form. What is the (approximate) predicted percentage increase in salary given one more year as a CEO?
+```{r}
+## Question 4 Solution
+ceosal2 <- con %>% dbReadTable('CEOSAL2') %>% data.table
+str(ceosal2)
+summary(ceosal2)
+
+ceosal2[ceosal2$ceoten==0]
+
+model2    <- lm(lsalary~ceoten, data=ceosal2)
+model2
+summary(model2)
+
+
+#Q1.4a.The average salary is 865.9 and the average tenure is 7.955 
+#Q1.4b.5 CEOs are in their first year as CEO (that is, ceoten 5 0).  
+#The longest tenure is 37
+#Q1.4c.y=6.505498+0.009724*ceoten.Multiple R-squared: 0.01316.n=177.
+#The (approximate) predicted percentage increase 0.9724% in salary given one more year as a CEO
+```
+
+Use the data in WAGE2.RAW to estimate a simple regression explaining monthly salary (wage) in terms of IQ score (IQ).
+(i) Find the average salary and average IQ in the sample. What is the sample standard
+deviation of IQ? (IQ scores are standardized so that the average in the population
+is 100 with a standard deviation equal to 15.)
+(ii) Estimate a simple regression model where a one-point increase in IQ changes
+wage by a constant dollar amount. Use this model to find the predicted increase in wage for an increase in IQ of 15 points. Does IQ explain most of the variation in wage?
+(iii) Now, estimate a model where each one-point increase in IQ has the same percentage effect on wage. If IQ increases by 15 points, what is the approximate percentage increase in predicted wage?
+
+```{r}
+## Question 5 Solution
+wage2 <- con %>% dbReadTable('wage2') %>% data.table
+str(wage2)
+summary(wage2)
+sd(wage2$IQ)
+
+
+model3    <- lm(wage~IQ, data=wage2)
+model3
+summary(model3)
+coef(model3)
+8.303*15
+
+
+model4    <- lm(lwage~IQ, data=wage2)
+model4
+summary(model4)
+coef(model4)
+0.008807*15
+#Q1.5a.the average salary and average are 957.9 and 101.3. sdIQ is 15.05264
+#Q1.5b.wage=116.992+8.303*IQ
+#The predicted increase 124.545 in wage for an increase in IQ of 15 points.  
+#R-squared:  0.09554. n=935.  
+#IQ doesn't explain most of the variation in wage because of the low R squre.
+#Q1.5C.lwage=5.886994+0.008807IQ  Multiple R-squared:  0.09909    0.132105
+```
+We used the data in MEAP93.RAW for Example 2.12. Now we want to explore the relationship between the math pass rate (math10) and spending per student (expend).
+(i) Do you think each additional dollar spent has the same effect on the pass rate, or
+does a diminishing effect seem more appropriate? Explain.
+(ii) In the population model
+math10 = b0 + b1 log(expend ) + u,
+argue that b1/10 is the percentage point change in math10 given a 10% increase in
+expend.
+(iii) Use the data in MEAP93.RAW to estimate the model from part (ii). Report the
+estimated equation in the usual way, including the sample size and R-squared.
+(iv) How big is the estimated spending effect? Namely, if spending increases by 10%,
+what is the estimated percentage point increase in math10?
+(v) One might worry that regression analysis can produce fitted values for math10
+that are greater than 100. Why is this not much of a worry in this data set?
+
+```{r}
+## Question 6 Solution
+MEAP93 <- con %>% dbReadTable('MEAP93') %>% data.table
+model5    <- lm(math10~lexpend, data=MEAP93)
+model5
+summary(model5)
+
+str(MEAP93)
+
+11.16*0.1
+
+summary(predict(lm(math10~lexpend, data=MEAP93)))
+
+#Q1.6a.The diminishing efect would be better.
+#the 1000 in 0==1000 is different from in 10000==11000
+#Q1.6b.same. A 1 unit change in log(expend) has a b1 effect on the math pass rate and 1 unit in log(expend) = 100% change in expend so a 10% change in expend will have a b1/10 effect.
+#Q1.6c.math10=-69.34+11.16*lexpend   Multiple R-squared:  0.02966   
+#From summary(meap93) size 408.
+#Q1.6d 1.164%
+#Q1.6e.predict math10 values are in [21.22,30.15]
+#     when math10=100. then 169.341/11.164=ln(expend) or expend > $3.8M. It is nearly impossible.
+```
+
+Use the data in HPRICE1.RAW to estimate the model
+price = b0 + b1sqrft + b2bdrms + u,
+where price is the house price measured in thousands of dollars.
+(i) Write out the results in equation form.
+(ii) What is the estimated increase in price for a house with one more bedroom, holding square footage constant?
+(iii) What is the estimated increase in price for a house with an additional bedroom that
+is 140 square feet in size? Compare this to your answer in part (ii).
+(iv) What percentage of the variation in price is explained by square footage and num-
+ber of bedrooms?
+(v) The first house in the sample has sqrft = 2,438 and bdrms = 4. Find the predicted
+selling price for this house from the OLS regression line.
+(vi) The actual selling price of the first house in the sample was $300,000(soprice = 300). Find the residual for this house. Does it suggest that the buyer underpaid or overpaid for the house?
+
+```{r}
+## Question 7 Solution
+HPRICE1 <- con %>% dbReadTable('HPRICE1') %>% data.table
+
+str(HPRICE1)
+model6    <- lm(price~sqrft+bdrms, data=HPRICE1)
+model6
+summary(model6)
+coef(model6)
+
+15.1982*1000
+
+0.1284*140+15.1982*1
+
+
+-19.3150+0.1284*2438+15.1982*4
+#Q1.7a.price=-19.3150+0.1284*sqrft+15.1982*bdrms.Multiple R-squared:0.6319.size88
+#Q1.7b. 15.1982*1000=15198.2
+#Q1.7c.0.1284*140+15.1982*12 much more expensive than part 2 
+#Q1.7d.Multiple R-squared:  0.6319
+#Q1.7e.354.517
+#Q1.7f.354.517-300=54.517  it suggest that the buyer underpaid for the house
+```
+
+The file CEOSAL2.RAW contains data on 177 chief executive officers and can be used to examine the effects of firm performance on CEO salary.
+(i) Estimate a model relating annual salary to firm sales and market value. Make the
+model of the constant elasticity variety for both independent variables. Write the
+results out in equation form.
+(ii) Add profits to the model from part (i). Why can this variable not be included in
+logarithmic form? Would you say that these firm performance variables explain
+most of the variation in CEO salaries?
+(iii) Add the variable ceoten to the model in part (ii). What is the estimated percentage
+return for another year of CEO tenure, holding other factors fixed?
+(iv) Find the sample correlation coefficient between the variables log(mktval) and
+profits. Are these variables highly correlated? What does this say about the OLS estimators?
+
+```{r}
+## Question 8 Solution
+ceosal2 <- con %>% dbReadTable('ceosal2') %>% data.table
+str(ceosal2)
+model7    <- lm(lsalary~lsales+lmktval, data=ceosal2)
+model7
+summary(model7)
+coef(model7)
+
+model8    <- lm(lsalary~lsales+lmktval+profits, data=ceosal2)
+model8
+summary(model8)
+
+model9    <- lm(lsalary~lsales+lmktval+profits+ceoten, data=ceosal2)
+model9
+summary(model9)
+
+cor(ceosal2$lmktval,ceosal2$profits)
+#Q1.8a.lsalary=4.6209+0.1621*lsales+0.1067*lmktval.Multiple R-squared:0.2991. size 177
+#Q1.8b.lsalary=1.614e-01*lsales+9.753e-02*lmktval+3.566e-05*profits+4.687e+00  
+#Multiple R-squared:  0.2993, I dont think so. R is very low. You can’t take the log of a negative #number.
+#Q1.8c.lsalary=1.614e-01*lsales+9.753e-02*lmktval+3.566e-05*profits+1.168e-02*ceoten+4.687e+00 
+#Multiple R-squared:  0.3183,  1 year of tenure=>1.17% increase is salary all else equal.
+#Q1.8d. 0.7768976  which is very high, both of these need to be included to avoid omitted variable bias 
+```
+
+Use the data in ATTEND.RAW for this exercise.
+(i) Obtain the minimum, maximum, and average values for the variables atndrte,
+priGPA, and ACT.
+(ii) Estimate the model
+atndrte = b0 + b1priGPA + b2 ACT + u,
+and write the results in equation form. Interpret the intercept. Does it have a useful
+meaning?
+(iii) Discuss the estimated slope coefficients. Are there any surprises?
+(iv) What is the predicted atndrte if priGPA = 3.65 and ACT = 20? What do you
+make of this result? Are there any students in the sample with these values of the
+explanatory variables?
+(v) If Student A has priGPA = 3.1 and ACT = 21 and Student B has priGPA = 2.1
+and ACT = 26, what is the predicted difference in their attendance rates?
+
+```{r}
+## Question 9 Solution
+ATTEND <- con %>% dbReadTable('ATTEND') %>% data.table
+summary(ATTEND) 
+
+
+model10    <- lm(atndrte~priGPA+ACT, data=ATTEND)
+model10
+summary(model10)
+
+#model %>% predict(data.frame(priGPA=3.65,ACT=20)) attend[priGPA==3.65 & ACT==20] %>% nrow
+#model %>% predict(data.frame(priGPA=3.1,ACT=21))-model %>% predict(data.frame(priGPA=2.1,ACT=26))
+
+17.261*3.65-1.717*20+75.700
+17.261*3.1-1.717*21+75.700
+17.261*2.1-1.717*26+75.700
+93.1521-67.3061
+#Q1.9a.atndrte  Min.   :  6.25 Max.   :100.00 Mean   : 81.71  
+#priGPA Min.   :0.857   Max.   :3.930 Mean   :2.587
+# ACT  Min.   :13.00 Max.   :32.00 Mean   :22.51
+
+#Q1.9b.atndrte=17.261*priGPA-1.717*ACT+75.700   Multiple R-squared:  0.2906
+#when GPA and ACT =0,atndrte=75.7 I dont think it is useful 
+#because it doesn't make sense.
+
+#Q1.9c.For every 1 point increase in ACT score, attendance goes down by 1.72% which is surprising. For every 0.1 point increase in GPA, attendance goes up by 1.72% which is not surprising.
+
+#Q1.9d.Predictedattendanceis104%whichmakesnosense.Thereisonestudentwiththosevalues
+#Q1.9e.93.1521-67.3061=25.846
+```
+Use the data in HTV.RAW to answer this question. The data set includes information on wages, education, parents’ education, and several other variables for 1,230 working men in 1991.
+(i) What is the range of the educ variable in the sample? What percentage of men
+completed 12th grade but no higher grade? Do the men or their parents have, on
+average, higher levels of education?
+
+(ii) Estimate the regression model
+educ = b0 + b1motheduc + b2 fatheduc + u
+by OLS and report the results in the usual form. How much sample variation in
+educ is explained by parents’ education? Interpret the coefficient on motheduc.
+
+(iii) Add the variable abil (a measure of cognitive ability) to the regression from
+part (ii), and report the results in equation form. Does “ability” help to explain
+variations in education, even after controlling for parents’ education? Explain.
+
+(iv) (Requirescalculus)Nowestimateanequationwhereabilappearsinquadraticform:
+educ = b0 + b1motheduc + b2 fatheduc + b3abil + b4abil2 + u.
+Using the estimates bˆ3 and bˆ4, use calculus to find the value of abil, call it abil*, where educ is minimized. (The other coefficients and values of parents’ education variables have no effect; we are holding parents’ education fixed.) Notice that abil is measured so that negative values are permissible. You might also verify that the second derivative is positive so that you do indeed have a minimum.
+
+(v) Argue that only a small fraction of men in the sample have “ability” less than the value calculated in part (iv). Why is this important?
+
+(vi) If you have access to a statistical program that includes graphing capabilities,
+use the estimates in part (iv) to graph the relationship beween the predicted educa- tion and abil. Let motheduc and fatheduc have their average values in the sample, 12.18 and 12.45, respectively.
+```{r}
+## Question 10 Solution
+HTV <- con %>% dbReadTable('HTV') %>% data.table
+
+str(HTV)
+range(HTV$educ)
+HTV[HTV$educ==12]
+512/1000
+698/1230
+mean(HTV$educ)
+
+model11    <- lm(educ~motheduc+fatheduc, data=HTV)
+model11
+summary(model11)
+
+model12    <- lm(educ~motheduc+fatheduc+abil, data=HTV)
+model12
+summary(model12)
+HTV$abil2 <- HTV$abil*HTV$abil
+head(HTV)
+modelX         <- lm(educ~motheduc+fatheduc+abil+I(abil^2), data=HTV) 
+modelX
+HTV2 <- HTV
+HTV2$motheduc <-mean(HTV$motheduc)
+HTV2$fatheduc <-mean(HTV$fatheduc)
+plotX_basic   <- ggplot(HTV) + geom_point(aes(y=educ,x=abil))
+plotX_basic
+plotX_quad    <- plotX_basic+geom_line(aes(y=predict(modelX,HTV2),x=abil),color="red",size=2)
+plotX_quad
+
+#or:
+#htv %>% select(educ,motheduc,fatheduc) %>% summary mean(htv$educ==12)
+
+#lm(educ~motheduc+fatheduc,data=htv) %>% summary lm(educ~motheduc+fatheduc+abil,data=htv) %>% summary
+
+#lm(educ~motheduc+fatheduc+abil+I(abil^2),data=htv) %>% summary betas <- tidy(lm(educ~motheduc+fatheduc+abil+I(abil^2),data=htv)) -betas[4,2]/2/betas[5,2]
+
+#mean(htv$abil<=-betas[4,2]/2/betas[5,2])
+
+#Q1.10a.range is 14 from 6 to 20   698/1230=0.5674797  13.0374Educ range [6,20] 42% completed 12th but no higher; Men have more education than their parents on average
+
+#Q1.10b.educ=0.30420*motheduc+0.19029*fatheduc+6.96435 Multiple R-squared:  0.2493 size 1230 0.2493     0.30420effect on child
+
+#Q1.10c.educ=0.18913*motheduc+0.11109*fatheduc+8.44869+0.50248abil   
+#Multiple R-squared:  0.4275 yes. because R is higher 
+
+#Q1.10d. educ=0.190126*motheduc+0.108939*fatheduc+8.240226+0.401462abil+0.050599abil2   
+#Multiple R-squared:  0.4444 According to calculation abil=-3.96709. 
+#After verifying the second derivative we know the result is bigger than 0.
+
+#Q1.10e.from the result we can see that only 15 men's abil less than -3.96709, 
+#which means only a small fraction of men in the sample have “ability” less than
+#the value calculated in part (iv)
+
+#Q1.10f. see plot~
+```
+
