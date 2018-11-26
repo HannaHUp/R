@@ -1,0 +1,162 @@
+trying to get the best model for the housing price that I can using the AIC and BIC:
+first way:
+
+```
+HPRICE11 <- con %>% dbReadTable('HPRICE1') %>% data.table
+head(HPRICE11)
+
+HPRICE1<-subset(HPRICE11,select=-c(index,price,assess,lprice))
+big <- list()  #
+m<-1  #
+for (i in 1:ncol(HPRICE1)) {
+  n <- 1  #  
+  small <- list()  #
+  for (num in 2:ncol(HPRICE1)) {
+    cor=cor.test(HPRICE1[[i]],HPRICE1[[num]])$estimate
+    p=cor.test(HPRICE1[[i]],HPRICE1[[num]])$p.value
+    if(p<0.05 & cor<1)
+    {
+      model<-lm(lprice~HPRICE1[[i]]+HPRICE1[[num]],data=HPRICE11)
+      pp=tidy(coeftest(model))[2,5]
+      ppp=tidy(coeftest(model))[3,5]
+      if (!is.na(pp) & pp<0.05){
+        small[[n]] <- colnames(HPRICE1)[i]  #
+      }
+      if(!is.na(ppp) & ppp<0.05){
+        small[[n]] <- colnames(HPRICE1)[num]  #
+      }
+      n <- n+1
+    }
+  }
+  ll <- list(small)  #
+#  names(ll) <- colnames(HPRICE1)[i]
+  big[[m]] <- ll  #
+  m <- m+1  #
+}
+
+
+#######
+
+for (i in 1:length(big)) {
+  n<-1
+  if (lengths(big[[i]])!=0){
+    n1=big[[i]][[1]][[1]]
+    a=paste(n1,"+",paste("I(",n1,"^2)",sep=''),sep='')
+    for (l in 2:lengths(big[[i]])) {
+      h=big[[i]][[1]][[l]]
+      a=paste(a,"+",h,"+",paste("I(",h,"^2)",sep=''),sep="")
+    }
+    final=paste("lprice~",a,sep='')
+    print(final)
+    model<-lm(final,data=HPRICE11)
+    print(c(AIC(model),BIC(model)))
+  }
+  }
+```
+second:
+```
+GPA211 <- con %>% dbReadTable('GPA2') %>% data.table
+
+GPA21<-subset(GPA211,select=-c(index,colgpa))
+for (i in 1:ncol(GPA21)) {
+  for (num in 2:ncol(GPA21)) {
+    cor=cor.test(GPA21[[i]],GPA21[[num]])$estimate
+    p=cor.test(GPA21[[i]],GPA21[[num]])$p.value
+    if(p<0.05 & cor<1){
+      model<-lm(colgpa~GPA21[[i]]+GPA21[[num]],data=GPA211)
+      pp=tidy(coeftest(model))[2,5]
+      ppp=tidy(coeftest(model))[3,5]
+      if (!is.na(pp) & pp<0.05){
+        print(paste("In",colnames(GPA21)[i],colnames(GPA21)[num],"we should use",colnames(GPA21)[i]))}
+      if(!is.na(ppp) & ppp<0.05){
+        print(paste("In",colnames(GPA21)[i],colnames(GPA21)[num],"we should use",colnames(GPA21)[num]))}
+    }
+  }
+}
+
+model1 <-lm(colgpa~sat+hsize+hsrank+hsperc+female+white+black+hsizesq,data=GPA211)
+coeftest(model1)
+A1=AIC(model1)
+B1=BIC(model1)
+model2 <-lm(colgpa~tothrs+hsrank+hsperc+female+hsizesq,data=GPA211)
+coeftest(model2)
+A2=AIC(model2)
+B2=BIC(model2)
+model3 <-lm(colgpa~athlete+hsrank+hsperc+female+white+black+hsizesq,data=GPA211)
+coeftest(model3)
+A3=AIC(model3)
+B3=BIC(model3)
+model4 <-lm(colgpa~athlete+hsrank+female+hsizesq+verbmath,data=GPA211)
+coeftest(model4)
+A4=AIC(model4)
+B4=BIC(model4)
+
+model5 <-lm(colgpa~hsize+athlete+hsrank+hsperc+tothrs+white+black+hsizesq,data=GPA211)
+coeftest(model5)
+A5=AIC(model5)
+B5=BIC(model5)
+
+model6 <-lm(colgpa~tothrs+athlete+hsrank+hsperc+female+hsize+hsizesq,data=GPA211)
+coeftest(model6)
+A6=AIC(model6)
+B6=BIC(model6)
+
+model7 <-lm(colgpa~tothrs+athlete+hsrank+hsperc+female+hsize+hsizesq,data=GPA211)
+coeftest(model7)
+A7=AIC(model7)
+B7=BIC(model7)
+
+model8 <-lm(colgpa~tothrs+hsrank+black+hsperc+female+hsize+hsizesq,data=GPA211)
+coeftest(model8)
+A8=AIC(model8)
+B8=BIC(model8)
+
+model9 <-lm(colgpa~tothrs+athlete+hsrank+hsperc+female+hsizesq,data=GPA211)
+coeftest(model9)
+A9=AIC(model9)
+B9=BIC(model9)
+
+model10 <-lm(colgpa~white+black+athlete+hsize+hsizesq,data=GPA211)
+coeftest(model10)
+A10=AIC(model10)
+B10=BIC(model10)
+
+model11 <-lm(colgpa~black+athlete+hsize+white+hsizesq,data=GPA211)
+coeftest(model11)
+A11=AIC(model11)
+B11=BIC(model11)
+
+model12 <-lm(colgpa~black+athlete+hsize+hsizesq+hsperc,data=GPA211)
+coeftest(model12)
+A12=AIC(model12)
+B12=BIC(model12)
+
+model13 <-lm(colgpa~tothrs+black+hsperc+athlete+hsize+hsrank+white+hsizesq,data=GPA211)
+coeftest(model13)
+A13=AIC(model13)
+B13=BIC(model13)
+
+
+A<-c(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13)
+which.min(A)
+B<-c(B1,B2,B3,B4,B5,B6,B7,B8,B9,B10,B11,B12,B13)
+which.min(B)
+```
+third:
+I think this way is the most effective in these three mothods.
+```
+#Q4.3.i:  using Step-wise selection
+MLB11 <- con %>% dbReadTable('MLB1') %>% data.table
+# Step-wise selection
+MLB111<-subset(MLB11,select=-c(index,salary,teamsal,lsalary))
+m1="nl+I(nl^2)"
+for (i in 2:ncol(MLB111)) {
+  m1=paste(m1,"+",colnames(MLB111)[i],"+",paste("I(",colnames(MLB111)[i],"^2)",sep=''),sep='')}
+
+m1
+m=paste("lsalary~",m1,sep='')
+print(m)
+modelm<-lm(m,data=MLB11)
+summary(step(modelm))#AIC
+summary(step(modelx,k=log(nrow(MLB11))))#BIC
+```
